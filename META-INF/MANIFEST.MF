@@ -1,5 +1,3 @@
 Manifest-Version: 1.0
-OmegaT-Plugin: true
+Class-Path: json-20240303.jar
 
-Name: kr.ychoi.otplugin.OpenRouterTranslate
-OmegaT-Plugin: MachineTranslator
