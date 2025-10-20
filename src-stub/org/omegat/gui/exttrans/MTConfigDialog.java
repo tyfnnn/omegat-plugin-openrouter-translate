@@ -1,5 +1,6 @@
 package org.omegat.gui.exttrans;
 
+import javax.swing.*;
 import java.awt.Window;
 
 public abstract class MTConfigDialog {
@@ -10,7 +11,7 @@ public abstract class MTConfigDialog {
         panel = new MTConfigPanel();
 	}
 
-	public void show() {
+	public void show(JPanel configPanel) {
 		// TODO Auto-generated method stub
 		
 	}

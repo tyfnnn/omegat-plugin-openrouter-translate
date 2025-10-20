@@ -20,24 +20,30 @@ import org.omegat.core.Core;
 import org.omegat.core.data.SourceTextEntry;
 
 /*
- * OpenAI Translate plugin for OmegaT
+ * OpenRouter Translate plugin for OmegaT
+ * Modified from OpenAI Translate plugin to use OpenRouter API
  * based on Naver Translate plugin by ParanScreen https://github.com/ParanScreen/omegat-plugin-navertranslate
  * licensed under GNU GPLv2 and modified by ychoi
  */
 
 
-public class OpenAITranslate extends BaseCachedTranslate {
+public class OpenRouterTranslate extends BaseCachedTranslate {
 
-    private static final String API_URL = "https://api.openai.com/v1/chat/completions";
-    private static final String BASE_PROMPT = 
-            "You are a translation tool integrated in a CAT (Computer-Assisted Translation) tool. Translate the following text from %s to %s. Preserve the tags in the text and keep any segmentations intact.\n\n";
-    
-    private static final String PARAM_API_KEY = "openai.api.key";
-    private static final String PARAM_MODEL = "openai.model";
-    private static final String PARAM_TEMPERATURE = "openai.temperature";
+    // GEÄNDERT: OpenRouter API URL statt OpenAI
+    private static final String API_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+    private static final String BASE_PROMPT =
+            "You are a translation tool integrated in a CAT (Computer-Assisted Translation) tool. " +
+                    "Translate the following text from %s to %s. Preserve the tags in the text and keep any segmentations intact.\n\n";
+
+    // GEÄNDERT: Parameter-Namen für OpenRouter
+    private static final String PARAM_API_KEY = "openrouter.api.key";
+    private static final String PARAM_MODEL = "openrouter.model";
+    private static final String PARAM_TEMPERATURE = "openrouter.temperature";
     private static final String PARAM_CUSTOM_PROMPT = "custom.prompt";
 
-    private static final String DEFAULT_MODEL = "gpt-4o";
+    // GEÄNDERT: Standard-Modell für OpenRouter (z.B. anthropic/claude-3.5-sonnet)
+    private static final String DEFAULT_MODEL = "anthropic/claude-3.5-sonnet";
     private static final String DEFAULT_TEMPERATURE = "0";
     private static final String DEFAULT_CUSTOM_PROMPT = "";
 
@@ -48,14 +54,14 @@ public class OpenAITranslate extends BaseCachedTranslate {
 
     @Override
     protected String getPreferenceName() {
-        return "allow_openai_translate";
+        return "allow_openrouter_translate";
     }
 
     public String getName() {
         if (Preferences.getPreferenceDefault(PARAM_API_KEY, "").isEmpty()) {
-            return "OpenAI Translate (API Key Required)";
+            return "OpenRouter Translate (API Key Required)";
         } else {
-            return "OpenAI Translate";
+            return "OpenRouter Translate";
         }
     }
 
@@ -63,7 +69,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
     public boolean isConfigurable() {
         return true;
     }
-    
+
     @Override
     public void showConfigurationUI(Window parent) {
         JPanel configPanel = new JPanel(new java.awt.GridBagLayout());
@@ -72,7 +78,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
         int uiRow = 0;
 
         // API Key
-        JLabel apiKeyLabel = new JLabel("API Key:");
+        JLabel apiKeyLabel = new JLabel("OpenRouter API Key:");
         gridBagConstraints = new GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = uiRow;
@@ -87,9 +93,10 @@ public class OpenAITranslate extends BaseCachedTranslate {
         gridBagConstraints.gridy = uiRow;
         gridBagConstraints.gridwidth = GridBagConstraints.REMAINDER;
         gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.weightx = 1.0;  // 입력란이 창 크기에 맞춰 늘어남
+        gridBagConstraints.weightx = 1.0;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 10, 0);
         configPanel.add(apiKeyField, gridBagConstraints);
+
         uiRow++;
 
         // Model
@@ -102,7 +109,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 10, 5);
         configPanel.add(modelLabel, gridBagConstraints);
 
-        modelField = new JTextField(Preferences.getPreferenceDefault(PARAM_MODEL, DEFAULT_MODEL));
+        modelField = new JTextField(Preferences.getPreferenceDefault(PARAM_MODEL, DEFAULT_MODEL), 52);
         gridBagConstraints = new GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = uiRow;
@@ -111,6 +118,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
         gridBagConstraints.weightx = 1.0;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 10, 0);
         configPanel.add(modelField, gridBagConstraints);
+
         uiRow++;
 
         // Temperature
@@ -123,7 +131,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 10, 5);
         configPanel.add(tempLabel, gridBagConstraints);
 
-        tempField = new JTextField(Preferences.getPreferenceDefault(PARAM_TEMPERATURE, DEFAULT_TEMPERATURE));
+        tempField = new JTextField(Preferences.getPreferenceDefault(PARAM_TEMPERATURE, DEFAULT_TEMPERATURE), 52);
         gridBagConstraints = new GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = uiRow;
@@ -132,6 +140,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
         gridBagConstraints.weightx = 1.0;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 10, 0);
         configPanel.add(tempField, gridBagConstraints);
+
         uiRow++;
 
         // Custom Prompt
@@ -140,16 +149,14 @@ public class OpenAITranslate extends BaseCachedTranslate {
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = uiRow;
         gridBagConstraints.fill = GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = GridBagConstraints.WEST;
+        gridBagConstraints.anchor = GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 10, 5);
         configPanel.add(promptLabel, gridBagConstraints);
 
-        promptField = new JTextArea(5, 20);
-        promptField.setText(Preferences.getPreferenceDefault(PARAM_CUSTOM_PROMPT, DEFAULT_CUSTOM_PROMPT));
+        promptField = new JTextArea(Preferences.getPreferenceDefault(PARAM_CUSTOM_PROMPT, DEFAULT_CUSTOM_PROMPT), 5, 52);
         promptField.setLineWrap(true);
         promptField.setWrapStyleWord(true);
-
-        JScrollPane scrollPane = new JScrollPane(promptField, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        JScrollPane scrollPane = new JScrollPane(promptField);
         gridBagConstraints = new GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = uiRow;
@@ -159,33 +166,37 @@ public class OpenAITranslate extends BaseCachedTranslate {
         gridBagConstraints.weighty = 1.0;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 10, 0);
         configPanel.add(scrollPane, gridBagConstraints);
-        uiRow++;
 
         MTConfigDialog dialog = new MTConfigDialog(parent, getName()) {
             @Override
             protected void onConfirm() {
-                try {
-                    Preferences.setPreference(PARAM_API_KEY, (Object) apiKeyField.getText());
-                    Preferences.setPreference(PARAM_MODEL, (Object) modelField.getText());
-                    Preferences.setPreference(PARAM_TEMPERATURE, (Object) tempField.getText());
-                    Preferences.setPreference(PARAM_CUSTOM_PROMPT, (Object) promptField.getText());
-                } catch (Exception e) {
-                    System.err.println("An error occurred while saving preferences: " + e.getMessage());
+                String key = apiKeyField.getText().trim();
+                Preferences.setPreference(PARAM_API_KEY, key);
+
+                String model = modelField.getText().trim();
+                if (!model.isEmpty()) {
+                    Preferences.setPreference(PARAM_MODEL, model);
                 }
+
+                String temp = tempField.getText().trim();
+                if (!temp.isEmpty()) {
+                    Preferences.setPreference(PARAM_TEMPERATURE, temp);
+                }
+
+                String customPrompt = promptField.getText().trim();
+                Preferences.setPreference(PARAM_CUSTOM_PROMPT, customPrompt);
             }
         };
 
-        dialog.panel.add(configPanel);
-        dialog.show();
+        dialog.show(configPanel);
     }
-    
-    @Override
+
     protected String translate(Language sLang, Language tLang, String text) throws Exception {
-    	String apiKey = Preferences.getPreferenceDefault(PARAM_API_KEY, "");
+        String apiKey = Preferences.getPreferenceDefault(PARAM_API_KEY, "");
         String model = Preferences.getPreferenceDefault(PARAM_MODEL, DEFAULT_MODEL);
         float temperature = Float.parseFloat(Preferences.getPreferenceDefault(PARAM_TEMPERATURE, DEFAULT_TEMPERATURE));
-    	
-        // 프로젝트에서 SourceTextEntry를 찾음
+
+        // Projekt SourceTextEntry finden
         List<SourceTextEntry> entries = Core.getProject().getAllEntries();
         SourceTextEntry matchingEntry = null;
 
@@ -198,18 +209,18 @@ public class OpenAITranslate extends BaseCachedTranslate {
 
         List<GlossaryEntry> glossaryEntries = new ArrayList<>();
         if (matchingEntry != null) {
-            // GlossarySearcher를 사용하여 용어집 검색 수행
+            // GlossarySearcher verwenden
             GlossarySearcher glossarySearcher = new GlossarySearcher(Core.getProject().getSourceTokenizer(), sLang, true);
             glossaryEntries = glossarySearcher.searchSourceMatches(matchingEntry, Core.getGlossaryManager().getGlossaryEntries(text));
         }
 
-        // 시스템 프롬프트 및 사용자 프롬프트 작성
+        // System- und User-Prompt erstellen
         String systemPrompt = createSystemPrompt(sLang, tLang, glossaryEntries);
-        System.out.println(systemPrompt);
+        System.out.println("System Prompt: " + systemPrompt);
         String userPrompt = text;
-        System.out.println(userPrompt);
+        System.out.println("User Prompt: " + userPrompt);
 
-        // OpenAI API 요청
+        // OpenRouter API Anfrage
         return requestTranslation(systemPrompt, userPrompt, apiKey, model, temperature);
     }
 
@@ -219,10 +230,10 @@ public class OpenAITranslate extends BaseCachedTranslate {
 
         StringBuilder promptBuilder = new StringBuilder();
 
-        // 기본 지침 추가
+        // Basis-Instruktionen
         promptBuilder.append(String.format(BASE_PROMPT, sLang.getLanguage(), tLang.getLanguage()));
 
-        // Glossary가 있을 경우 추가
+        // Glossar hinzufügen, falls vorhanden
         if (!glossaryEntries.isEmpty()) {
             promptBuilder.append("Glossary:\n");
             for (GlossaryEntry entry : glossaryEntries) {
@@ -232,7 +243,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
             }
         }
 
-        // 사용자 정의 프롬프트 추가
+        // Benutzerdefinierter Prompt
         if (!customPrompt.isEmpty()) {
             promptBuilder.append("\n").append(customPrompt).append("\n");
         }
@@ -248,12 +259,16 @@ public class OpenAITranslate extends BaseCachedTranslate {
         Map<String, String> headers = new TreeMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("Authorization", "Bearer " + apiKey);
+        // OPTIONAL: OpenRouter-spezifische Header
+        // headers.put("HTTP-Referer", "https://your-site.com"); // Optional: Ihre Website
+        // headers.put("X-Title", "OmegaT Translation Plugin"); // Optional: App-Name
 
-        String body = new JSONObject()
+        JSONObject requestBody = new JSONObject()
                 .put("model", model)
                 .put("messages", messages)
-                .put("temperature", temperature)
-                .toString();
+                .put("temperature", temperature);
+
+        String body = requestBody.toString();
 
         try {
             String response = WikiGet.postJSON(API_URL, body, headers);
@@ -268,7 +283,7 @@ public class OpenAITranslate extends BaseCachedTranslate {
             }
             return "Translation failed";
         } catch (Exception e) {
-            return "Error contacting OpenAI API: " + e.getMessage();
+            return "Error contacting OpenRouter API: " + e.getMessage();
         }
     }
 }

@@ -1,6 +1,5 @@
 Manifest-Version: 1.0
 OmegaT-Plugin: true
 
-Name: kr.ychoi.otplugin.OpenAITranslate
+Name: kr.ychoi.otplugin.OpenRouterTranslate
 OmegaT-Plugin: MachineTranslator
-
